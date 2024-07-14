@@ -101,12 +101,9 @@ module Postal
         part.gsub!(/(#{URL_REGEX})(?=\s|$)/) do
           if track_domain?($~[:domain])
             @tracked_links += 1
-            url = $~[:url]
-            while url =~ /[^\w]$/
-              theend = url.size - 2
-              url = url[0..theend]
-            end
-            token = @message.create_link(url)
+            url = $~[:url].gsub('&', '&amp;')
+            encoded_url  = URI::Escape.uri_escape(url)
+            token = @message.create_link(encoded_url)
             "#{domain}/#{@message.server.token}/#{token}"
           else
             ::Regexp.last_match(0)
@@ -118,8 +115,9 @@ module Postal
         part.gsub!(/href=(['"])(#{URL_REGEX})['"]/) do
           if track_domain?($~[:domain])
             @tracked_links += 1
-            url = CGI.unescapeHTML($~[:url])
-            token = @message.create_link(url)
+            url = CGI.unescapeHTML($~[:url]).gsub('&', '&amp;')
+            encoded_url = URI::Escape.uri_escape(url)
+            token = @message.create_link(encoded_url)
             "href='#{domain}/#{@message.server.token}/#{token}'"
           else
             ::Regexp.last_match(0)
