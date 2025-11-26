@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'cgi'
+
 class TrackingMiddleware
 
   TRACKING_PIXEL = File.read(Rails.root.join("app", "assets", "images", "tracking_pixel.png"))
@@ -116,12 +118,17 @@ class TrackingMiddleware
   end
 
   def encode_redirect_url(url)
+    # First, unescape any HTML entities (handles legacy data with &amp;)
+    # This is defensive - the message parser should already handle this,
+    # but we want to be safe for any edge cases or existing data
+    url = CGI.unescapeHTML(url)
+    
     # Parse the URL into components
     uri = URI.parse(url)
     
     # If there's a query string, properly encode it
     if uri.query
-      # Parse query parameters, which handles both & and &amp; correctly
+      # Parse query parameters (now with plain & separators)
       params = URI.decode_www_form(uri.query)
       # Re-encode them properly with & separators
       uri.query = URI.encode_www_form(params)
