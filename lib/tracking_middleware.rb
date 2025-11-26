@@ -109,7 +109,29 @@ class TrackingMiddleware
       end
     end
 
-    [307, { "Location" => link["url"] }, ["Redirected to: #{link['url']}"]]
+    # Properly encode the redirect URL for the Location header
+    # This ensures ampersands and other special characters are correctly handled
+    redirect_url = encode_redirect_url(link["url"])
+    [307, { "Location" => redirect_url }, ["Redirected to: #{link['url']}"]]
+  end
+
+  def encode_redirect_url(url)
+    # Parse the URL into components
+    uri = URI.parse(url)
+    
+    # If there's a query string, properly encode it
+    if uri.query
+      # Parse query parameters, which handles both & and &amp; correctly
+      params = URI.decode_www_form(uri.query)
+      # Re-encode them properly with & separators
+      uri.query = URI.encode_www_form(params)
+    end
+    
+    uri.to_s
+  rescue URI::InvalidURIError
+    # If URL parsing fails, return the original URL
+    # This maintains backward compatibility for edge cases
+    url
   end
 
   def get_message_db_from_server_token(token)
