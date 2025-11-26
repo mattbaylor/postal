@@ -102,10 +102,12 @@ module Postal
           if track_domain?($~[:domain])
             @tracked_links += 1
             url = $~[:url]
-            while url =~ /[^\w]$/
+            # Remove trailing punctuation that shouldn't be part of the URL
+            while url =~ /[^\w\/]$/
               theend = url.size - 2
               url = url[0..theend]
             end
+            # Store the URL as-is in the database (no encoding needed)
             token = @message.create_link(url)
             "#{domain}/#{@message.server.token}/#{token}"
           else
@@ -118,7 +120,9 @@ module Postal
         part.gsub!(/href=(['"])(#{URL_REGEX})['"]/) do
           if track_domain?($~[:domain])
             @tracked_links += 1
+            # Unescape any HTML entities in the URL (e.g., &amp; -> &)
             url = CGI.unescapeHTML($~[:url])
+            # Store the raw URL in the database (no encoding needed)
             token = @message.create_link(url)
             "href='#{domain}/#{@message.server.token}/#{token}'"
           else
