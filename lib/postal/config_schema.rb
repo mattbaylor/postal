@@ -490,6 +490,23 @@ module Postal
       end
     end
 
+    group :message_inspection do
+      boolean :cache_enabled do
+        description "Enable caching of spam/virus scan results based on message content hash"
+        default false
+      end
+
+      integer :cache_ttl_days do
+        description "Number of days to keep scan results in cache before expiring"
+        default 7
+      end
+
+      integer :cache_max_entries do
+        description "Maximum number of entries to keep in the scan result cache (LRU eviction)"
+        default 100_000
+      end
+    end
+
     group :smtp_client do
       integer :open_timeout do
         description "The open timeout for outgoing SMTP connections"

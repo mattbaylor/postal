@@ -51,3 +51,80 @@ Use the commands below to initialize your database and make your first user.
 postal initialize
 postal make-user
 ```
+
+## Commit Message Convention (Edify Fork)
+
+This fork of Postal uses **Conventional Commits** to distinguish between Edify-specific changes and core Postal modifications that could be contributed upstream.
+
+### Format
+
+```
+<type>(<scope>): <description>
+
+[optional body]
+```
+
+### Types
+
+**Edify-Specific:**
+- `edify(branding)`: User-facing text changes (Postal → Edify)
+- `edify(ui)`: Visual/styling changes specific to Edify
+- `edify(docs)`: Edify-specific documentation
+- `edify(feature)`: Edify-specific features (monitoring, deployment, etc.)
+- `edify(fix)`: Bug fixes specific to Edify deployments
+- `edify(chore)`: Edify-specific maintenance tasks
+
+**Core Postal (could be upstreamed):**
+- `postal(fix)`: Bug fixes that benefit core Postal
+- `postal(feat)`: New features for core functionality
+- `postal(deps)`: Dependency updates
+- `postal(chore)`: Maintenance, refactoring
+- `postal(docs)`: Documentation improvements
+- `postal(test)`: Test additions or improvements
+- `postal(release)`: Version releases
+
+### Examples
+
+```bash
+# Edify branding changes
+edify(branding): Replace "Postal" with "Edify" in email templates
+edify(ui): Update primary color scheme to match Edify brand
+edify(feature): Add automated health monitoring scripts
+
+# Core Postal improvements
+postal(fix): Resolve SMTP authentication timeout issues
+postal(feat): Add Prometheus metrics for message queue latency
+postal(deps): Upgrade Rails to 7.1.5
+```
+
+### Filtering Commits
+
+```bash
+# Show only Edify changes
+git log --grep="edify("
+
+# Show only branding changes
+git log --grep="edify(branding)"
+
+# Show only core Postal changes
+git log --grep="postal("
+
+# Generate Edify-specific changelog
+git log --grep="edify(" --pretty=format:"- %s (%h)" --reverse
+```
+
+### Why This Convention?
+
+1. **Clear Separation**: Easy to identify fork-specific vs. upstream changes
+2. **Upstream Contributions**: Quickly identify commits that could be contributed back
+3. **Automated Changelogs**: Compatible with changelog generation tools
+4. **Git Filtering**: Easy to filter commits by type or scope
+5. **Merge Tracking**: Simplifies merging upstream updates
+
+### Best Practices
+
+- Write clear, descriptive commit messages
+- Explain **why** the change was made, not just **what** changed
+- Keep commits focused on a single logical change
+- Reference issue numbers when applicable
+- Use imperative mood ("Add feature" not "Added feature")
