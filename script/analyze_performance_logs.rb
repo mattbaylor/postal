@@ -119,8 +119,9 @@ class PerformanceLogAnalyzer
       next unless line.include?('[TIMING]')
       
       # Extract JSON from log line
-      # Format: timestamp [LEVEL] [TIMING] {...json...}
-      json_match = line.match(/\[TIMING\]\s+(.+)$/)
+      # Format: timestamp [LEVEL] [TIMING] {...json...} component=worker thread=work2 ...
+      # Need to extract just the JSON part (between { and })
+      json_match = line.match(/\[TIMING\]\s+(\{.+?\})\s*(?:component=|$)/)
       next unless json_match
       
       begin

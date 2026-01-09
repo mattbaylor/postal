@@ -16,17 +16,32 @@ echo "Output directory: ${OUTPUT_DIR}"
 echo "=================================="
 echo
 
+# Auto-detect container names
+WEB_CONTAINER=$(docker ps --format '{{.Names}}' | grep -E '(postal.*web|web.*postal)' | head -1)
+WORKER_CONTAINER=$(docker ps --format '{{.Names}}' | grep -E '(postal.*worker|worker.*postal)' | head -1)
+
+if [ -z "$WEB_CONTAINER" ]; then
+    echo "ERROR: Could not find web container"
+    echo "Available containers:"
+    docker ps --format '{{.Names}}'
+    exit 1
+fi
+
+echo "Using web container: ${WEB_CONTAINER}"
+echo "Using worker container: ${WORKER_CONTAINER}"
+echo
+
 # Create output directory on host
 mkdir -p "${OUTPUT_DIR}"
 
 # Run analysis script inside Docker container
 echo "Running analysis..."
-docker exec postal_web_1 ruby script/analyze_performance_logs.rb --hours "${HOURS}" | tee "${OUTPUT_DIR}/analysis_report.txt"
+docker exec "${WEB_CONTAINER}" ruby script/analyze_performance_logs.rb --hours "${HOURS}" | tee "${OUTPUT_DIR}/analysis_report.txt"
 
 # Copy CSV files from container to host
 echo
 echo "Copying CSV files..."
-docker cp postal_web_1:/opt/postal/app/tmp/performance_analysis/. "${OUTPUT_DIR}/"
+docker cp "${WEB_CONTAINER}:/opt/postal/app/tmp/performance_analysis/." "${OUTPUT_DIR}/"
 
 # List output files
 echo
