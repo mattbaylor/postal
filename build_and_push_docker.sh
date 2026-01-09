@@ -8,17 +8,17 @@ echo "==== Building and Pushing Postal Docker Image ===="
 echo ""
 
 # Version info
-NEW_VERSION="3.3.4-edify.3"
+NEW_VERSION="3.3.4-edify.6"
 echo "Building version: $NEW_VERSION"
 echo ""
 
 # Step 1: Ensure Docker login
 echo "Step 1: Checking Docker Hub login..."
-if ! docker info | grep -q "Username:"; then
-    echo "Not logged in to Docker Hub. Please run:"
+# Check if we can access Docker Hub repos (better test than 'docker info')
+if ! docker pull mattbaylor/postalserver:3.3.4-edify.5 > /dev/null 2>&1; then
+    echo "Docker Hub access check failed. Please ensure you're logged in:"
     echo "  docker login"
-    echo ""
-    read -p "Press Enter after you've logged in to continue..."
+    exit 1
 fi
 
 echo "✓ Docker login confirmed"
@@ -34,8 +34,6 @@ docker buildx build \
   --builder multiarch \
   --target full \
   -t mattbaylor/postalserver:${NEW_VERSION} \
-  -t mattbaylor/postalserver:edify \
-  -t mattbaylor/postalserver:latest \
   --push \
   .
 
@@ -45,8 +43,6 @@ if [ $? -eq 0 ]; then
     echo ""
     echo "Images pushed to Docker Hub:"
     echo "  - mattbaylor/postalserver:${NEW_VERSION}"
-    echo "  - mattbaylor/postalserver:edify"
-    echo "  - mattbaylor/postalserver:latest"
     echo ""
 else
     echo ""
@@ -56,13 +52,17 @@ fi
 
 # Step 3: Tag the git commit
 echo "Step 3: Creating git tag..."
-if git tag -a "${NEW_VERSION}" -m "Multi-hash email scan cache enhancement"; then
-    echo "✓ Git tag created: ${NEW_VERSION}"
-    echo ""
-    echo "To push the tag to GitHub, run:"
-    echo "  git push origin ${NEW_VERSION}"
+if git rev-parse "${NEW_VERSION}" >/dev/null 2>&1; then
+    echo "Note: Git tag ${NEW_VERSION} already exists, skipping"
 else
-    echo "Note: Git tag may already exist or git repo has issues"
+    if git tag -a "${NEW_VERSION}" -m "Fix multi-line DKIM header normalization in scan cache"; then
+        echo "✓ Git tag created: ${NEW_VERSION}"
+        echo ""
+        echo "To push the tag to GitHub, run:"
+        echo "  git push origin ${NEW_VERSION}"
+    else
+        echo "Warning: Could not create git tag"
+    fi
 fi
 
 echo ""

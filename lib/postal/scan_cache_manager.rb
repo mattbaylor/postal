@@ -16,25 +16,42 @@ module Postal
         headers = parts[0]
         body = parts[1]
 
-        # Remove/normalize headers that vary per message but don't affect scanning
-        normalized_headers = headers.split(/\r?\n/).reject do |line|
-          # Remove message-ID style headers (unique per message)
-          line =~ /^X-Postal-MsgID:/i ||
-            line =~ /^Message-ID:/i ||
-            line =~ /^Received:/i || # Routing path changes per delivery
-            line =~ /^Date:/i || # Timestamp changes
-            line =~ /^DKIM-Signature:/i # DKIM signature is unique per message (includes timestamp)
-        end.map do |line|
-          # Normalize recipient headers (To, Cc) since they don't affect spam scores significantly
-          # But keep From, Subject, etc as they do affect scoring
-          if line =~ /^(To|Cc):/i
-            "#{::Regexp.last_match(1)}: <normalized>"
-          else
-            line
-          end
-        end.join("\n")
+        # Parse multi-line headers (RFC 5322: continuation lines start with whitespace)
+        header_lines = headers.split(/\r?\n/)
+        normalized_lines = []
+        skip_continuation = false
 
-        "#{normalized_headers}\n\n#{body}"
+        header_lines.each do |line|
+          # Check if this is a continuation line (starts with whitespace)
+          if line =~ /^\s/
+            # Skip if we're in a continuation of an excluded header
+            next if skip_continuation
+            normalized_lines << line
+          else
+            # This is a new header
+            # Check if it should be excluded
+            if line =~ /^X-Postal-MsgID:/i ||
+               line =~ /^Message-ID:/i ||
+               line =~ /^Received:/i ||
+               line =~ /^Date:/i ||
+               line =~ /^DKIM-Signature:/i
+              skip_continuation = true
+              next
+            end
+
+            # Not excluded, reset continuation flag
+            skip_continuation = false
+
+            # Normalize recipient headers
+            if line =~ /^(To|Cc):/i
+              normalized_lines << "#{::Regexp.last_match(1)}: <normalized>"
+            else
+              normalized_lines << line
+            end
+          end
+        end
+
+        "#{normalized_lines.join("\n")}\n\n#{body}"
       end
 
       # Compute SHA-256 hash of normalized full message
@@ -251,17 +268,12 @@ module Postal
       # Normalize text for template matching (conservative patterns)
       def normalize_template_text(text)
         text.dup
-          # Only in greeting patterns
           .gsub(/\b(Hi|Hello|Dear|Hey|Greetings)\s+([A-Z][a-z]+)\b/i, '\1 {{NAME}}')
           .gsub(/\b(Hi|Hello|Dear)\s+([A-Z][a-z]+\s+[A-Z][a-z]+)\b/i, '\1 {{NAME}}')
-          # Email addresses
           .gsub(/\b[\w.+-]+@[\w.-]+\.\w{2,}\b/, '{{EMAIL}}')
-          # Phone numbers
           .gsub(/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/, '{{PHONE}}')
           .gsub(/\b\+\d{1,3}\s?\d{1,4}\s?\d{1,4}\s?\d{1,9}\b/, '{{PHONE}}')
-          # IDs in context
           .gsub(/\b(order|tracking|invoice|ticket|case|id|#)\s*[:#]?\s*(\d{5,})\b/i, '\1 {{ID}}')
-          # Normalize whitespace
           .gsub(/\s+/, ' ')
           .strip
       end
