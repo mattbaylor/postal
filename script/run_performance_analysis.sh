@@ -26,7 +26,7 @@ docker exec postal_web_1 ruby script/analyze_performance_logs.rb --hours "${HOUR
 # Copy CSV files from container to host
 echo
 echo "Copying CSV files..."
-docker cp postal_web_1:/opt/postal/tmp/performance_analysis/. "${OUTPUT_DIR}/"
+docker cp postal_web_1:/opt/postal/app/tmp/performance_analysis/. "${OUTPUT_DIR}/"
 
 # List output files
 echo
