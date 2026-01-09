@@ -5,13 +5,6 @@
 class ScanResultCache < ApplicationRecord
   self.table_name = "scan_result_cache"
 
-  # Enum for tracking which hash type matched (for metrics/debugging)
-  enum matched_via: {
-    full_hash: 0,
-    attachment_hash: 1,
-    body_template_hash: 2
-  }, _prefix: true
-
   # Validations
   validates :content_hash, presence: true, length: { is: 64 }
   validates :message_size, presence: true, numericality: { greater_than: 0 }

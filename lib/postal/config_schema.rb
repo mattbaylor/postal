@@ -505,6 +505,16 @@ module Postal
         description "Maximum number of entries to keep in the scan result cache (LRU eviction)"
         default 100_000
       end
+
+      boolean :cache_attachment_hash_enabled do
+        description "Enable attachment-based hash matching for cache lookups (matches emails with identical attachments but different body text)"
+        default true
+      end
+
+      boolean :cache_template_hash_enabled do
+        description "Enable template-based hash matching for cache lookups (matches personalized emails by normalizing recipient names)"
+        default true
+      end
     end
 
     group :smtp_client do

@@ -1,0 +1,35 @@
+diff --git a/lib/postal/message_db/message.rb b/lib/postal/message_db/message.rb
+index 3a2c7a6..367d0af 100644
+--- a/lib/postal/message_db/message.rb
++++ b/lib/postal/message_db/message.rb
+@@ -518,7 +518,29 @@ module Postal
+       # Inspect this message
+       #
+       def inspect_message
+-        result = MessageInspection.scan(self, scope&.to_sym)
++        result = nil
++
++        # Try cache lookup first (if enabled)
++        if Postal::ScanCacheManager.caching_enabled?(server_id)
++          cache_entry = Postal::ScanCacheManager.lookup(raw_message, size)
++          if cache_entry
++            result = Postal::CachedScanResult.new(cache_entry, self, scope&.to_sym)
++            result.record_hit!
++            Postal.logger.info "Cache HIT for message #{id} [hash=#{cache_entry.content_hash[0..7]}]"
++          else
++            Postal.logger.debug "Cache MISS for message #{id}"
++          end
++        end
++
++        # If no cache hit, perform actual scan
++        if result.nil?
++          result = MessageInspection.scan(self, scope&.to_sym)
++
++          # Store result in cache for future use (if enabled and eligible)
++          if Postal::ScanCacheManager.caching_enabled?(server_id)
++            Postal::ScanCacheManager.store(raw_message, size, result)
++          end
++        end
+ 
+         # Update the messages table with the results of our inspection
+         update(inspected: true, spam_score: result.spam_score, threat: result.threat, threat_details: result.threat_message)
