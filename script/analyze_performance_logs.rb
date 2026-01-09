@@ -9,6 +9,7 @@ require 'json'
 require 'csv'
 require 'time'
 require 'optparse'
+require 'fileutils'
 
 class PerformanceLogAnalyzer
   attr_reader :hours_back, :hostname, :output_dir
@@ -67,12 +68,17 @@ class PerformanceLogAnalyzer
     # Get logs from Docker container on remote host
     # Use 'since' flag to limit time range
     since_flag = "#{hours_back}h"
-    command = "ssh #{hostname} 'docker logs --since #{since_flag} postal_worker_1 2>&1 | grep TIMING'"
+    
+    puts "  Connecting to #{hostname}..."
+    puts "  Running: docker logs --since #{since_flag} postal_worker_1 2>&1 | grep TIMING"
+    
+    command = "ssh -o ConnectTimeout=30 #{hostname} 'docker logs --since #{since_flag} postal_worker_1 2>&1 | grep \"\\[TIMING\\]\"'"
     
     @raw_logs = `#{command}`
     
     if $?.exitstatus != 0 && $?.exitstatus != 1  # 1 is OK (grep no match)
       puts "ERROR: Failed to fetch logs from #{hostname}"
+      puts "Exit code: #{$?.exitstatus}"
       exit 1
     end
   end
