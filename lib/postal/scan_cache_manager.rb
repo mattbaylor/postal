@@ -22,7 +22,8 @@ module Postal
           line =~ /^X-Postal-MsgID:/i ||
             line =~ /^Message-ID:/i ||
             line =~ /^Received:/i || # Routing path changes per delivery
-            line =~ /^Date:/i # Timestamp changes
+            line =~ /^Date:/i || # Timestamp changes
+            line =~ /^DKIM-Signature:/i # DKIM signature is unique per message (includes timestamp)
         end.map do |line|
           # Normalize recipient headers (To, Cc) since they don't affect spam scores significantly
           # But keep From, Subject, etc as they do affect scoring
