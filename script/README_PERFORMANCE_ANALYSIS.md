@@ -4,25 +4,50 @@ The `analyze_performance_logs.rb` script analyzes Postal worker performance logs
 
 ## Usage on Production Servers
 
-Since the production servers don't have Ruby installed outside of Docker, run the script through the Postal Docker container:
+**IMPORTANT:** These scripts must be run ON the production server itself (e.g., after SSH'ing to e1.edify.press or e2.edify.press). The production servers don't have Ruby installed outside of Docker, so we run the script through the Postal Docker container.
 
-### Option 1: Run from Web Container (Recommended)
+### Recommended Method: Use the Helper Script
+
+The easiest way to run the analysis:
+
+```bash
+# SSH to production server
+ssh root@e1.edify.press
+
+# Go to postal directory
+cd /opt/postal
+
+# Pull latest code (includes the new scripts)
+git pull
+
+# Run analysis (defaults to last 24 hours)
+./script/run_performance_analysis.sh
+
+# Or specify hours
+./script/run_performance_analysis.sh 48
+```
+
+This helper script will:
+1. Run the analysis inside the Docker container
+2. Save both the text report and CSV to a timestamped directory
+3. Show you where the files are located
+
+### Manual Method: Run Directly in Docker
+
+If you prefer more control:
 
 ```bash
 # SSH to production server (e.g., e1.edify.press)
 cd /opt/postal
 
 # Run analysis for last 24 hours
-docker exec postal_web_1 ruby script/analyze_performance_logs.rb
-
-# Run analysis for last 48 hours
-docker exec postal_web_1 ruby script/analyze_performance_logs.rb --hours 48
+docker exec postal_web_1 ruby script/analyze_performance_logs.rb --hours 24
 
 # Copy the CSV output to host
 docker cp postal_web_1:/opt/postal/tmp/performance_analysis/. ./performance_analysis/
 ```
 
-### Option 2: Run from Worker Container
+### Alternative: Run from Worker Container
 
 ```bash
 # Run from worker container
@@ -30,21 +55,6 @@ docker exec postal_worker_1 ruby script/analyze_performance_logs.rb --hours 24
 
 # Copy output
 docker cp postal_worker_1:/opt/postal/tmp/performance_analysis/. ./performance_analysis/
-```
-
-### Option 3: Remote Analysis via SSH
-
-Run from your local machine to analyze a remote server:
-
-```bash
-# From your development machine
-cd /Users/matt/repo/postal
-
-# Analyze e1.edify.press
-ruby script/analyze_performance_logs.rb --server e1.edify.press --hours 24
-
-# Analyze e2.edify.press
-ruby script/analyze_performance_logs.rb --server e2.edify.press --hours 48
 ```
 
 ## Output
