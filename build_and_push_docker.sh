@@ -8,7 +8,7 @@ echo "==== Building and Pushing Postal Docker Image ===="
 echo ""
 
 # Version info
-NEW_VERSION="3.3.4-edify.8"
+NEW_VERSION="3.3.4-edify.9"
 echo "Building version: $NEW_VERSION"
 echo ""
 
