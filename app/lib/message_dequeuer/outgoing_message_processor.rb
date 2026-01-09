@@ -4,6 +4,16 @@ module MessageDequeuer
   class OutgoingMessageProcessor < Base
 
     def process
+      # Initialize timing data for forensic analysis
+      @timing_data = {
+        message_id: queued_message.message_id,
+        server_id: queued_message.server_id,
+        queue_id: queued_message.id,
+        domain: queued_message.domain,
+        start_time: Time.now.utc.iso8601(3)
+      }
+      @process_start = Time.now
+      
       catch_stops do
         check_domain
         check_rcpt_to
@@ -11,23 +21,59 @@ module MessageDequeuer
         hold_if_credential_is_set_to_hold
         hold_if_recipient_on_suppression_list
         parse_content
-        inspect_message
+        
+        # Time: Message inspection (spam/virus scanning)
+        time_operation(:inspect) { inspect_message }
+        
         fail_if_spam
-        add_outgoing_headers
+        
+        # Time: Add outgoing headers (DKIM signing)
+        time_operation(:dkim) { add_outgoing_headers }
+        
         check_send_limits
         increment_live_stats
         hold_if_server_development_mode
-        send_message_to_sender
+        
+        # Time: SMTP delivery
+        time_operation(:deliver) { send_message_to_sender }
+        
         add_recipient_to_suppression_list_on_too_many_hard_fails
         remove_recipient_from_suppression_list_on_success
         log_sender_result
         finish_processing
       end
+      
+      # Log successful completion with timing
+      log_timing_data(status: "success")
     rescue StandardError => e
+      log_timing_data(status: "error", error: e.class.name)
       handle_exception(e)
     end
 
     private
+
+    # Time an operation and store the result in @timing_data
+    def time_operation(name)
+      start = Time.now
+      result = yield
+      elapsed_ms = ((Time.now - start) * 1000).round(2)
+      @timing_data["#{name}_ms"] = elapsed_ms
+      result
+    rescue => e
+      elapsed_ms = ((Time.now - start) * 1000).round(2)
+      @timing_data["#{name}_ms"] = elapsed_ms
+      raise e
+    end
+
+    # Log timing data in JSON format for easy parsing
+    def log_timing_data(status:, error: nil)
+      @timing_data[:total_ms] = ((Time.now - @process_start) * 1000).round(2) if @process_start
+      @timing_data[:message_size] = queued_message.message&.size || 0
+      @timing_data[:status] = status
+      @timing_data[:error] = error if error
+      
+      Postal.logger.info "[TIMING] #{@timing_data.to_json}"
+    end
 
     def check_domain
       return if queued_message.message.domain

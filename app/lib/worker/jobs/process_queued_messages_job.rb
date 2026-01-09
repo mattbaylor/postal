@@ -7,6 +7,7 @@ module Worker
       def call
         @lock_time = Time.current
         @locker = Postal.locker_name_with_suffix(SecureRandom.hex(8))
+        @last_processed_server_id ||= 0  # Initialize for round-robin fairness
 
         find_ip_addresses
         lock_message_for_processing
@@ -40,14 +41,44 @@ module Worker
       end
 
       # Obtain a queued message from the database for processing
+      # Uses round-robin server selection to prevent head-of-line blocking
       #
       # @return [void]
       def lock_message_for_processing
-        QueuedMessage.where(ip_address_id: [nil, @ip_addresses])
-                     .where(locked_by: nil, locked_at: nil)
-                     .ready_with_delayed_retry
-                     .limit(1)
-                     .update_all(locked_by: @locker, locked_at: @lock_time)
+        # Base query for available messages
+        base_query = QueuedMessage.where(ip_address_id: [nil, @ip_addresses])
+                                  .where(locked_by: nil, locked_at: nil)
+                                  .ready_with_delayed_retry
+        
+        # Try to find next server after the last one we processed
+        # This implements round-robin fairness across servers
+        message_id = base_query
+                       .where("server_id > ?", @last_processed_server_id)
+                       .order("server_id ASC, id ASC")
+                       .limit(1)
+                       .pluck(:id)
+                       .first
+        
+        # If no message found from servers after last_processed_server_id, wrap around
+        if message_id.nil?
+          message_id = base_query
+                         .order("server_id ASC, id ASC")
+                         .limit(1)
+                         .pluck(:id)
+                         .first
+        end
+        
+        # Lock the selected message atomically
+        if message_id
+          result = QueuedMessage.where(id: message_id, locked_by: nil, locked_at: nil)
+                                .update_all(locked_by: @locker, locked_at: @lock_time)
+          
+          # Track which server we just processed for next round
+          if result > 0
+            server_id = QueuedMessage.where(id: message_id).pluck(:server_id).first
+            @last_processed_server_id = server_id if server_id
+          end
+        end
       end
 
       # Get a full list of all messages which we can process (i.e. those which have just
