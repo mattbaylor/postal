@@ -36,7 +36,12 @@ mkdir -p "${OUTPUT_DIR}"
 
 # Run analysis script inside Docker container
 echo "Running analysis..."
-docker exec "${WEB_CONTAINER}" ruby script/analyze_performance_logs.rb --hours "${HOURS}" | tee "${OUTPUT_DIR}/analysis_report.txt"
+
+# Fetch logs on the host, pipe to Ruby script in container
+docker logs --since "${HOURS}h" "${WORKER_CONTAINER}" 2>&1 | \
+  grep TIMING | \
+  docker exec -i "${WEB_CONTAINER}" ruby script/analyze_performance_logs.rb --hours "${HOURS}" --stdin | \
+  tee "${OUTPUT_DIR}/analysis_report.txt"
 
 # Copy CSV files from container to host
 echo

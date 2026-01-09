@@ -12,11 +12,12 @@ require 'optparse'
 require 'fileutils'
 
 class PerformanceLogAnalyzer
-  attr_reader :hours_back, :hostname, :output_dir
+  attr_reader :hours_back, :hostname, :output_dir, :use_stdin
 
-  def initialize(hours_back: 24, hostname: nil)
+  def initialize(hours_back: 24, hostname: nil, use_stdin: false)
     @hours_back = hours_back
     @hostname = hostname
+    @use_stdin = use_stdin
     @output_dir = File.join(Dir.pwd, 'tmp', 'performance_analysis')
     @timing_data = []
     @errors = []
@@ -49,7 +50,10 @@ class PerformanceLogAnalyzer
     puts "Fetching logs..."
     cutoff_time = Time.now - (hours_back * 3600)
 
-    if hostname
+    if use_stdin
+      # Read from STDIN (logs piped in from host)
+      @raw_logs = STDIN.read
+    elsif hostname
       # Fetch from remote server via SSH
       fetch_remote_logs(cutoff_time)
     elsif ENV['DOCKER_CONTAINER']
@@ -351,7 +355,7 @@ class PerformanceLogAnalyzer
 end
 
 # Parse command line arguments
-options = { hours_back: 24, hostname: nil }
+options = { hours_back: 24, hostname: nil, use_stdin: false }
 
 OptionParser.new do |opts|
   opts.banner = "Usage: analyze_performance_logs.rb [options]"
@@ -364,6 +368,10 @@ OptionParser.new do |opts|
     options[:hostname] = s
   end
   
+  opts.on("--stdin", "Read logs from STDIN") do
+    options[:use_stdin] = true
+  end
+  
   opts.on("--help", "Show this help message") do
     puts opts
     exit
@@ -373,7 +381,8 @@ end.parse!
 # Run analyzer
 analyzer = PerformanceLogAnalyzer.new(
   hours_back: options[:hours_back],
-  hostname: options[:hostname]
+  hostname: options[:hostname],
+  use_stdin: options[:use_stdin]
 )
 
 analyzer.run
