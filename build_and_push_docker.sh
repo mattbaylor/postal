@@ -8,7 +8,7 @@ echo "==== Building and Pushing Postal Docker Image ===="
 echo ""
 
 # Version info
-NEW_VERSION="3.3.4-edify.7"
+NEW_VERSION="3.3.4-edify.8"
 echo "Building version: $NEW_VERSION"
 echo ""
 
@@ -48,7 +48,7 @@ echo "Step 3: Creating git tag..."
 if git rev-parse "${NEW_VERSION}" >/dev/null 2>&1; then
     echo "Note: Git tag ${NEW_VERSION} already exists, skipping"
 else
-    if git tag -a "${NEW_VERSION}" -m "Fix head-of-line blocking with round-robin queue selection"; then
+    if git tag -a "${NEW_VERSION}" -m "Add performance analysis scripts for timing log analysis and CSV export"; then
         echo "✓ Git tag created: ${NEW_VERSION}"
         echo ""
         echo "To push the tag to GitHub, run:"
